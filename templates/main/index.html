@@ -1,10 +1,125 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Title</title>
-</head>
-<body>
+{% extends 'base.html' %}
+{% load static %}
 
-</body>
-</html>
+{% block title %}Главная - Сервис рассылок{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <h1 class="mb-4">Панель управления</h1>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-3 mb-4">
+        <div class="card card-stats text-white bg-primary">
+            <div class="card-body">
+                <h6 class="card-title">
+                    <i class="bi bi-envelope"></i> Всего рассылок
+                </h6>
+                <p class="card-text display-4">{{ total_mailings }}</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-4">
+        <div class="card card-stats text-white bg-success">
+            <div class="card-body">
+                <h6 class="card-title">
+                    <i class="bi bi-play-circle"></i> Активные рассылки
+                </h6>
+                <p class="card-text display-4">{{ active_mailings }}</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-4">
+        <div class="card card-stats text-white bg-warning">
+            <div class="card-body">
+                <h6 class="card-title">
+                    <i class="bi bi-clock-history"></i> Ожидают
+                </h6>
+                <p class="card-text display-4">{{ created_mailings }}</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-4">
+        <div class="card card-stats text-white bg-info">
+            <div class="card-body">
+                <h6 class="card-title">
+                    <i class="bi bi-people"></i> Уникальные получатели
+                </h6>
+                <p class="card-text display-4">{{ total_clients }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-light">
+                <h5><i class="bi bi-plus-circle"></i> Быстрые действия</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{% url 'mailings:create' %}" class="btn btn-primary">
+                        <i class="bi bi-plus-circle"></i> Создать рассылку
+                    </a>
+                    <a href="{% url 'clients:create' %}" class="btn btn-success">
+                        <i class="bi bi-person-plus"></i> Добавить получателя
+                    </a>
+                    <a href="{% url 'email_messages:create' %}" class="btn btn-info text-white">
+                        <i class="bi bi-plus-circle"></i> Создать сообщение
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-light">
+                <h5><i class="bi bi-info-circle"></i> Статистика</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between">
+                        <span>Завершенные рассылки:</span>
+                        <span class="badge bg-secondary">{{ completed_mailings }}</span>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between">
+                        <span>Рассылки в очереди:</span>
+                        <span class="badge bg-secondary">{{ created_mailings }}</span>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between">
+                        <span>Прогресс:</span>
+                        <span>
+                            {% if total_mailings > 0 %}
+                                {% widthratio completed_mailings total_mailings 100 %}%
+                            {% else %}
+                                0%
+                            {% endif %}
+                        </span>
+                    </div>
+                    <div class="progress">
+                        {% if total_mailings > 0 %}
+                            <div class="progress-bar bg-success" 
+                                 style="width: {% widthratio completed_mailings total_mailings 100 %}%">
+                                {{ completed_mailings }}/{{ total_mailings }}
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% if active_mailings > 0 %}
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i> 
+                        Активных рассылок: {{ active_mailings }}
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

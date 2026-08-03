@@ -1,10 +1,94 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Title</title>
-</head>
-<body>
+{% extends 'base.html' %}
 
-</body>
-</html>
+{% block title %}Рассылки{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Рассылки</h1>
+    <a href="{% url 'mailings:create' %}" class="btn btn-primary">
+        <i class="bi bi-plus-circle"></i> Создать рассылку
+    </a>
+</div>
+
+{% if mailings %}
+    <div class="table-responsive">
+        <table class="table table-striped table-hover">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Сообщение</th>
+                    <th>Получатели</th>
+                    <th>Начало</th>
+                    <th>Окончание</th>
+                    <th>Статус</th>
+                    <th>Активна</th>
+                    <th>Действия</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for mailing in mailings %}
+                <tr>
+                    <td>#{{ mailing.id }}</td>
+                    <td>
+                        <a href="{% url 'mailings:detail' mailing.id %}">
+                            {{ mailing.message.subject|truncatechars:30 }}
+                        </a>
+                    </td>
+                    <td>{{ mailing.recipients.count }}</td>
+                    <td>{{ mailing.start_datetime|date:"d.m.Y H:i" }}</td>
+                    <td>{{ mailing.end_datetime|date:"d.m.Y H:i" }}</td>
+                    <td>
+                        {% if mailing.status == 'created' %}
+                            <span class="badge bg-warning status-badge">Создана</span>
+                        {% elif mailing.status == 'started' %}
+                            <span class="badge bg-success status-badge">Запущена</span>
+                        {% elif mailing.status == 'completed' %}
+                            <span class="badge bg-secondary status-badge">Завершена</span>
+                        {% elif mailing.status == 'cancelled' %}
+                            <span class="badge bg-danger status-badge">Отменена</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if mailing.is_active %}
+                            <span class="badge bg-success">Да</span>
+                        {% else %}
+                            <span class="badge bg-danger">Нет</span>
+                        {% endif %}
+                    </td>
+                    <td class="table-actions">
+                        <a href="{% url 'mailings:detail' mailing.id %}" class="btn btn-sm btn-info">
+                            <i class="bi bi-eye"></i>
+                        </a>
+                        {% if mailing.status != 'started' and mailing.is_active %}
+                            <a href="{% url 'mailings:update' mailing.id %}" class="btn btn-sm btn-warning">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            <a href="{% url 'mailings:delete' mailing.id %}" class="btn btn-sm btn-danger">
+                                <i class="bi bi-trash"></i>
+                            </a>
+                        {% endif %}
+                        {% if user.is_manager or user.is_superuser %}
+                            <form method="post" action="{% url 'mailings:toggle_active' mailing.id %}" style="display: inline;">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm {% if mailing.is_active %}btn-secondary{% else %}btn-success{% endif %}">
+                                    {% if mailing.is_active %}
+                                        <i class="bi bi-pause-circle"></i>
+                                    {% else %}
+                                        <i class="bi bi-play-circle"></i>
+                                    {% endif %}
+                                </button>
+                            </form>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{% else %}
+    <div class="alert alert-info">
+        <i class="bi bi-info-circle"></i> Нет созданных рассылок.
+        <a href="{% url 'mailings:create' %}" class="alert-link">Создать первую рассылку</a>
+    </div>
+{% endif %}
+{% endblock %}
