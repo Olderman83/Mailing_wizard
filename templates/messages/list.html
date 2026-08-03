@@ -1,10 +1,49 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Title</title>
-</head>
-<body>
+{% extends 'base.html' %}
 
-</body>
-</html>
+{% block title %}Сообщения{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Сообщения</h1>
+    <a href="{% url 'messages:create' %}" class="btn btn-primary">
+        <i class="bi bi-plus-circle"></i> Создать сообщение
+    </a>
+</div>
+
+{% if messages_list %}
+    <div class="table-responsive">
+        <table class="table table-striped table-hover">
+            <thead>
+                <tr>
+                    <th>Тема</th>
+                    <th>Тело</th>
+                    <th>Дата создания</th>
+                    <th>Действия</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for msg in messages_list %}
+                <tr>
+                    <td><strong>{{ msg.subject }}</strong></td>
+                    <td>{{ msg.body|truncatechars:100 }}</td>
+                    <td>{{ msg.created_at|date:"d.m.Y H:i" }}</td>
+                    <td class="table-actions">
+                        <a href="{% url 'messages:update' msg.id %}" class="btn btn-sm btn-warning">
+                            <i class="bi bi-pencil"></i>
+                        </a>
+                        <a href="{% url 'messages:delete' msg.id %}" class="btn btn-sm btn-danger">
+                            <i class="bi bi-trash"></i>
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{% else %}
+    <div class="alert alert-info">
+        <i class="bi bi-info-circle"></i> Нет созданных сообщений.
+        <a href="{% url 'messages:create' %}" class="alert-link">Создать первое сообщение</a>
+    </div>
+{% endif %}
+{% endblock %}
