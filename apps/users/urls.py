@@ -11,6 +11,7 @@ urlpatterns = [
     path('profile/', views.profile_view, name='profile'),
     path('list/', views.user_list_view, name='list'),
     path('<int:pk>/toggle-block/', views.user_toggle_block, name='toggle_block'),
+    path('activate/<uidb64>/<token>/', views.activate_account, name='activate'),
 
     # Password reset
     path('password-reset/',

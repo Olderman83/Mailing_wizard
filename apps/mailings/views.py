@@ -36,7 +36,7 @@ def mailing_create(request):
             mailing = form.save(commit=False)
             mailing.user = request.user
             mailing.save()
-            form.save_m2m()  # Сохраняем ManyToMany поля
+            form.save_m2m()
             messages.success(request, 'Рассылка успешно создана')
             return redirect('mailings:list')
     else:
@@ -48,7 +48,8 @@ def mailing_create(request):
 def mailing_update(request, pk):
     mailing = get_object_or_404(Mailing, pk=pk)
 
-    if not request.user.can_edit_mailing(mailing):
+    # Проверка прав
+    if not (mailing.user == request.user or request.user.is_manager() or request.user.is_superuser):
         messages.error(request, 'У вас нет прав для редактирования этой рассылки')
         return redirect('mailings:list')
 
@@ -71,7 +72,8 @@ def mailing_update(request, pk):
 def mailing_delete(request, pk):
     mailing = get_object_or_404(Mailing, pk=pk)
 
-    if not request.user.can_edit_mailing(mailing):
+    # Проверка прав
+    if not (mailing.user == request.user or request.user.is_manager() or request.user.is_superuser):
         messages.error(request, 'У вас нет прав для удаления этой рассылки')
         return redirect('mailings:list')
 
@@ -90,15 +92,14 @@ def mailing_delete(request, pk):
 def mailing_send(request, pk):
     mailing = get_object_or_404(Mailing, pk=pk)
 
-    if not request.user.can_edit_mailing(mailing):
+    # Проверка прав
+    if not (mailing.user == request.user or request.user.is_manager() or request.user.is_superuser):
         messages.error(request, 'У вас нет прав для отправки этой рассылки')
         return redirect('mailings:detail', pk=pk)
 
-    # Обновляем статус
     update_mailing_status(mailing.id)
     mailing.refresh_from_db()
 
-    # Проверяем, можно ли отправить
     if not mailing.can_be_sent():
         messages.warning(
             request,
@@ -106,7 +107,6 @@ def mailing_send(request, pk):
         )
         return redirect('mailings:detail', pk=pk)
 
-    # Запускаем отправку синхронно
     success, failed = send_mailing(mailing.id, request.user)
 
     if success > 0 or failed > 0:
@@ -121,48 +121,14 @@ def mailing_send(request, pk):
 
 
 @login_required
-def mailing_send_command(request, pk):
-    """
-    Отправляет рассылку через management команду
-    """
-    mailing = get_object_or_404(Mailing, pk=pk)
-
-    if not request.user.can_edit_mailing(mailing):
-        messages.error(request, 'У вас нет прав для отправки этой рассылки')
-        return redirect('mailings:detail', pk=pk)
-
-    try:
-        # Проверяем, можно ли отправить
-        update_mailing_status(mailing.id)
-        mailing.refresh_from_db()
-
-        if not mailing.can_be_sent():
-            messages.warning(
-                request,
-                f'Рассылка не может быть отправлена (статус: {mailing.get_status_display()})'
-            )
-            return redirect('mailings:detail', pk=pk)
-
-        # Вызываем команду
-        call_command('send_mailing', str(pk))
-        messages.success(request, f'Рассылка #{pk} отправлена через командную строку')
-    except Exception as e:
-        logger.error(f"Ошибка отправки рассылки #{pk} через CLI: {str(e)}")
-        messages.error(request, f'Ошибка отправки: {str(e)}')
-
-    return redirect('mailings:detail', pk=pk)
-
-
-@login_required
 def mailing_detail(request, pk):
     mailing = get_object_or_404(Mailing, pk=pk)
 
-    # Проверка прав доступа
-    if not (request.user.can_edit_mailing(mailing) or request.user.is_manager()):
+    # Проверка прав
+    if not (mailing.user == request.user or request.user.is_manager() or request.user.is_superuser):
         messages.error(request, 'У вас нет прав для просмотра этой рассылки')
         return redirect('mailings:list')
 
-    # Обновляем статус
     update_mailing_status(mailing.id)
     mailing.refresh_from_db()
 
@@ -198,4 +164,23 @@ def mailing_toggle_active(request, pk):
 
     status = 'активирована' if mailing.is_active else 'деактивирована'
     messages.success(request, f'Рассылка #{pk} {status}')
+    return redirect('mailings:detail', pk=pk)
+
+
+@login_required
+def mailing_send_command(request, pk):
+    """Отправляет рассылку через management команду"""
+    mailing = get_object_or_404(Mailing, pk=pk)
+
+    # Проверка прав
+    if not (mailing.user == request.user or request.user.is_manager() or request.user.is_superuser):
+        messages.error(request, 'У вас нет прав для отправки этой рассылки')
+        return redirect('mailings:detail', pk=pk)
+
+    try:
+        call_command('send_mailing', str(pk))
+        messages.success(request, f'Рассылка #{pk} отправлена через командную строку')
+    except Exception as e:
+        messages.error(request, f'Ошибка отправки: {str(e)}')
+
     return redirect('mailings:detail', pk=pk)

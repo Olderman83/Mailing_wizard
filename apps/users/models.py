@@ -11,6 +11,9 @@ class User(AbstractUser):
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='Дата регистрации')
     last_activity = models.DateTimeField(auto_now=True, verbose_name='Последняя активность')
 
+    USERNAME_FIELD = 'email'
+    REQUIRED_FIELDS = ['username']
+
     class Meta:
         verbose_name = 'Пользователь'
         verbose_name_plural = 'Пользователи'

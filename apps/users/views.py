@@ -13,6 +13,7 @@ from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes, force_str
 from django.contrib.auth.tokens import default_token_generator
 from django.core.cache import cache
+from django.db import transaction
 from .models import User
 from .forms import CustomUserCreationForm, CustomAuthenticationForm
 
@@ -32,21 +33,50 @@ class RegisterView(CreateView):
     def form_valid(self, form):
         response = super().form_valid(form)
         user = form.instance
+        user.is_active = False  # Деактивируем до подтверждения
+        user.save()
 
         # Отправка письма с подтверждением
         try:
             subject = 'Подтверждение регистрации'
-            message = render_to_string('registration/activation_email.html', {
+            html_message = render_to_string('registration/activation_email.html', {
                 'user': user,
                 'uid': urlsafe_base64_encode(force_bytes(user.pk)),
                 'token': default_token_generator.make_token(user),
+                'protocol': 'https' if self.request.is_secure() else 'http',
+                'domain': self.request.get_host(),
             })
-            send_mail(subject, message, settings.EMAIL_HOST_USER, [user.email])
+            send_mail(
+                subject,
+                '',
+                settings.EMAIL_HOST_USER,
+                [user.email],
+                html_message=html_message
+            )
             messages.success(self.request, 'На ваш email отправлено письмо с подтверждением')
         except Exception as e:
-            messages.warning(self.request, 'Не удалось отправить письмо подтверждения')
+            messages.warning(self.request, f'Не удалось отправить письмо подтверждения: {str(e)}')
 
         return response
+
+
+def activate_account(request, uidb64, token):
+    """Активация аккаунта по ссылке из письма"""
+    try:
+        uid = force_str(urlsafe_base64_decode(uidb64))
+        user = User.objects.get(pk=uid)
+    except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+        user = None
+
+    if user is not None and default_token_generator.check_token(user, token):
+        user.is_active = True
+        user.save()
+        login(request, user)
+        messages.success(request, 'Аккаунт успешно активирован!')
+        return redirect('main:index')
+    else:
+        messages.error(request, 'Ссылка активации недействительна или устарела')
+        return redirect('users:login')
 
 
 @login_required
@@ -72,6 +102,10 @@ def user_list_view(request):
 @user_passes_test(lambda u: u.is_manager() or u.is_superuser)
 def user_toggle_block(request, pk):
     user = get_object_or_404(User, pk=pk)
+    if request.user == user:
+        messages.error(request, 'Нельзя заблокировать самого себя')
+        return redirect('users:list')
+
     if request.method == 'POST':
         user.is_blocked = not user.is_blocked
         user.save()
