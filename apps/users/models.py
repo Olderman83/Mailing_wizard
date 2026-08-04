@@ -42,3 +42,7 @@ class User(AbstractUser):
         if self.is_manager():
             return True
         return client.user == self
+
+    def is_authenticated_and_active(self):
+        """Проверяет, активен ли пользователь и не заблокирован"""
+        return self.is_active and not self.is_blocked
